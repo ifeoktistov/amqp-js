@@ -25,21 +25,6 @@ load config
 
 
 var amqpJs = amqpJs || {};
-amqpJs.options = (function (){
-    var configPath = __dirname + "/config.js";
-    var sampleConfigPath = __dirname + "./config.example.js";
-    var fs = require('fs');
-    if(!fs.existsSync(configPath)) {
-        console.log("config/config.js doesn't exist; creating it...");
-        fs.createReadStream(sampleConfigPath).pipe(fs.createWriteStream(configPath));
-    }
-    return require(configPath);
-})();
-amqpJs.clients = [];
-amqpJs.users = {};
-amqpJs.users.edited_users = {};
-amqpJs.users.user = {}; // all users object
-amqpJs._bufferQueue = [];
 amqpJs.toConsole = function (msg) {
     if (process.send) {
         process.send(msg);
@@ -48,6 +33,19 @@ amqpJs.toConsole = function (msg) {
         console.log(msg);
     }
 }
+amqpJs.options = (function (){
+    var configPath = __dirname + "/config.js";
+    if(!fs.existsSync(configPath)) {
+        amqpJs.toConsole("Error: Config doesn't exist; Please copy config.example.js -> config.js.");
+        process.end();
+    }
+    return require(configPath);
+})();
+amqpJs.clients = [];
+amqpJs.users = {};
+amqpJs.users.edited_users = {};
+amqpJs.users.user = {}; // all users object
+amqpJs._bufferQueue = [];
 /* statistic */
 amqpJs.statistic = {};
 amqpJs.statistic.counters = {
