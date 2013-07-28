@@ -4,8 +4,6 @@ var url = require('url');
 var fs = require('fs');
 var qs = require('querystring');
 var amqp = require('./libs/amqp/amqp');
-var cp = require('child_process');
-//var amqp_js = require('./libs/amqpjs');
 
 
 /* process message from server */
@@ -27,11 +25,16 @@ load config
 
 
 var amqpJs = amqpJs || {};
-amqpJs.options = {
-    host: "127.0.0.1",
-    login: 'guest',
-    password: 'guest'
-};
+amqpJs.options = (function (){
+    var configPath = __dirname + "/config.js";
+    var sampleConfigPath = __dirname + "./config.example.js";
+    var fs = require('fs');
+    if(!fs.existsSync(configPath)) {
+        console.log("config/config.js doesn't exist; creating it...");
+        fs.createReadStream(sampleConfigPath).pipe(fs.createWriteStream(configPath));
+    }
+    return require(configPath);
+})();
 amqpJs.clients = [];
 amqpJs.users = {};
 amqpJs.users.edited_users = {};
@@ -62,6 +65,7 @@ amqpJs.statistic.sendStatistic = function () {};
 
 
 ////////amqpJs.toConsole(process.memoryUsage());
+//amqpJs.toConsole(__dirname);
 
 
 
@@ -251,9 +255,9 @@ amqpJs.initConnection = function () {
 
     amqpJs.connection = function harness_createConnection() {
         return amqp.createConnection({
-            host: amqpJs.options.host,
-            login: amqpJs.options.login,
-            password: amqpJs.options.password
+            host: amqpJs.options.amqp.host,
+            login: amqpJs.options.amqp.login,
+            password: amqpJs.options.amqp.password
         }, {defaultExchangeName: 'amq.topic'});
     }();
 
