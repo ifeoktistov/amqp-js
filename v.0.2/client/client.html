@@ -1,0 +1,149 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+	<title>Chat Client</title>
+	<script type="text/javascript" src="jquery.js"></script>
+	<SCRIPT type="text/javascript">
+	<!--
+	HTTP_GET_VARS=new Array();
+	strGET=document.location.search.substr(1,document.location.search.length);
+	if(strGET!='')
+	    {
+	    gArr=strGET.split('&');
+	    for(i=0;i<gArr.length;++i)
+	        {
+	        v='';vArr=gArr[i].split('=');
+	        if(vArr.length>1){v=vArr[1];}
+	        HTTP_GET_VARS[unescape(vArr[0])]=unescape(v);
+	        }
+	    }
+	 
+	function GET(v)
+	{
+	if(!HTTP_GET_VARS[v]){return 'undefined';}
+	return HTTP_GET_VARS[v];
+	}
+	
+	var Url = {
+			 
+			// public method for url encoding
+			encode : function (string) {
+				return escape(this._utf8_encode(string));
+			},
+		 
+			// public method for url decoding
+			decode : function (string) {
+				return this._utf8_decode(unescape(string));
+			},
+		 
+			// private method for UTF-8 encoding
+			_utf8_encode : function (string) {
+				string = string.replace(/\r\n/g,"\n");
+				var utftext = "";
+		 
+				for (var n = 0; n < string.length; n++) {
+		 
+					var c = string.charCodeAt(n);
+		 
+					if (c < 128) {
+						utftext += String.fromCharCode(c);
+					}
+					else if((c > 127) && (c < 2048)) {
+						utftext += String.fromCharCode((c >> 6) | 192);
+						utftext += String.fromCharCode((c & 63) | 128);
+					}
+					else {
+						utftext += String.fromCharCode((c >> 12) | 224);
+						utftext += String.fromCharCode(((c >> 6) & 63) | 128);
+						utftext += String.fromCharCode((c & 63) | 128);
+					}
+		 
+				}
+		 
+				return utftext;
+			},
+		 
+			// private method for UTF-8 decoding
+			_utf8_decode : function (utftext) {
+				var string = "";
+				var i = 0;
+				var c = c1 = c2 = 0;
+		 
+				while ( i < utftext.length ) {
+		 
+					c = utftext.charCodeAt(i);
+		 
+					if (c < 128) {
+						string += String.fromCharCode(c);
+						i++;
+					}
+					else if((c > 191) && (c < 224)) {
+						c2 = utftext.charCodeAt(i+1);
+						string += String.fromCharCode(((c & 31) << 6) | (c2 & 63));
+						i += 2;
+					}
+					else {
+						c2 = utftext.charCodeAt(i+1);
+						c3 = utftext.charCodeAt(i+2);
+						string += String.fromCharCode(((c & 15) << 12) | ((c2 & 63) << 6) | (c3 & 63));
+						i += 3;
+					}
+		 
+				}
+		 
+				return string;
+			}
+		 
+		}
+	// -->
+	</SCRIPT>
+	<script type="text/javascript">
+		var u = GET('u');
+
+		var fetch = function() {
+			//$('#debug').html('Connected!');
+			
+			$.ajax({
+                url: '/fetch?u=' + u,
+				context: document.body,
+                dataType: 'json',
+                cache : false,
+				success: function(result) {
+                    console.log(result);
+                    //debugger;
+                    var el = $('<span></span>');
+                    el.html(JSON.stringify(result));
+                    $('#chatbox').append(el);
+                    $('#chatbox').append('</br>');
+                    $("#chatbox").scrollTop($("#chatbox")[0].scrollHeight);
+					fetch();
+				},
+				error: function() {
+					$('#debug').html('Disconnected!');
+					setTimeout(function() {
+						fetch();
+					}, 1000);
+				}
+			});
+		};
+
+		$(document).ready(function() {
+		    fetch();
+		});
+
+
+    </script>
+	<link rel="stylesheet" type="text/css" href="reset.css" />
+	<link rel="stylesheet" type="text/css" href="styles.css" />
+</head>
+<body>
+	<div id="chatbox">
+        waiting messages....</br>
+	</div>
+	<form action="" method="post" onsubmit="return false;" style="display: none">
+		<input type="text" name="message" class="message" />
+		<input type="button" name="send" value="Send" class="button" /> <span id="debug"></span>
+	</form>
+</body>
+</html>

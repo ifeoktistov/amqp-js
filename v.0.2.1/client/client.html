@@ -1,0 +1,77 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+	<title>AMQPjs</title>
+	<link rel="stylesheet" type="text/css" href="reset.css" />
+	<link rel="stylesheet" type="text/css" href="styles.css" />
+</head>
+<body>
+	<div id="chatbox">
+        waiting messages....</br>
+	</div>
+	<form action="" method="post" onsubmit="return false;" style="display: none">
+		<input type="text" name="message" class="message" />
+		<input type="button" name="send" value="Send" class="button" /> <span id="debug"></span>
+	</form>
+
+
+    <script type="text/javascript" src="jquery.js"></script>
+    <script type="text/javascript" src="amqp_js.js"></script>
+    <SCRIPT type="text/javascript">
+        var user_id = null;
+
+        (function(){//code for get only user login from GET URL params
+            HTTP_GET_VARS = new Array();
+            strGET = document.location.search.substr(1, document.location.search.length);
+            if (strGET != '') {
+                gArr = strGET.split('&');
+                for (i = 0; i < gArr.length; ++i) {
+                    v = '';
+                    vArr = gArr[i].split('=');
+                    if (vArr.length > 1) {
+                        v = vArr[1];
+                    }
+                    HTTP_GET_VARS[unescape(vArr[0])] = unescape(v);
+                }
+            }
+            function GET(v) {
+                if (!HTTP_GET_VARS[v]) {
+                    return null;
+                }
+                return HTTP_GET_VARS[v];
+            }
+            if (GET('u')) {
+                user_id = GET('u');
+            }
+
+        })();/// end get userID /////////////////////////
+
+
+
+        //config app
+        var receiving = function(json_message){
+            console.log(json_message);
+            //debugger;
+            var el = $('<span></span>');
+            el.html(JSON.stringify(json_message));
+            $('#chatbox').append(el);
+            $('#chatbox').append('</br>');
+            $("#chatbox").scrollTop($("#chatbox")[0].scrollHeight);
+        }
+
+
+
+        // amqpJs start
+        var amqpJs_poll = new amqpJs({
+            'fetch_host' : '/fetch',
+            'user' : user_id,
+            'fetch_success' : receiving
+        });
+
+        $(document).ready(function () {
+            amqpJs_poll.start();
+        });
+    </script>
+</body>
+</html>
