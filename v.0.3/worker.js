@@ -239,7 +239,7 @@ amqpJs.processQueueMessage = function processQueueMessage(json) {
     }
     if (typeof json.to == "string") { //key
         amqpJs.users.addMessage(json.to, json);
-        sended++;
+        //sended++;
         ////////amqpJs.toConsole("sended:" + sended);
         return true;
     }
