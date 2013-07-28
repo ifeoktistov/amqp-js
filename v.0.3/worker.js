@@ -10,11 +10,8 @@ var cp = require('child_process');
 
 /* process message from server */
 process.on('message', function(m) {
-    process.send('CHILD got message:' + m);
+    process.send('CHILD got message:' + m); //redirect message
 });
-
-/* send message to server */
-process.send({ foo: 5 });
 
 /*
 
@@ -24,7 +21,7 @@ load config
  apacheconf('/etc/apache2/sites-enabled/******', function(err, config, parser) {
      if (err) throw err
 
-     console.log(objToString(config,5));
+     amqpJs.toConsole(objToString(config,5));
  })
  */
 
@@ -40,8 +37,14 @@ amqpJs.users = {};
 amqpJs.users.edited_users = {};
 amqpJs.users.user = {}; // all users object
 amqpJs._bufferQueue = [];
-
-
+amqpJs.toConsole = function (msg) {
+    if (process.send) {
+        process.send(msg);
+    }
+    else {
+        console.log(msg);
+    }
+}
 /* statistic */
 amqpJs.statistic = {};
 amqpJs.statistic.counters = {
@@ -58,14 +61,14 @@ amqpJs.statistic.sendStatistic = function () {};
 
 
 
-////////console.log(process.memoryUsage());
+////////amqpJs.toConsole(process.memoryUsage());
 
 
 
 
 ////////////////////////// lib
 amqpJs.users.handleUserClient = function handleUserClient(key, client) {
-    //////console.log("handle:" + key);
+    //////amqpJs.toConsole("handle:" + key);
     if (typeof amqpJs.users.user[key] != "object") {
         amqpJs.users.user[key] = {};
     }
@@ -92,11 +95,11 @@ amqpJs.users.addMessage = function addMessage(key, message) {
     })(key, message.id), 2000);
 
 
-    ////////console.log("add message:" + key + "messages length:" + Object.keys(amqpJs.users.user[key].messages).length);
+    ////////amqpJs.toConsole("add message:" + key + "messages length:" + Object.keys(amqpJs.users.user[key].messages).length);
 };
 
 amqpJs.users.sendNewMessages = function sendNewMessages() {
-    ////////console.log(amqpJs.users.edited_users);
+    ////////amqpJs.toConsole(amqpJs.users.edited_users);
     var send_messages = [];
     for (var key in amqpJs.users.edited_users) {
         if (amqpJs.users.edited_users.hasOwnProperty(key)) {
@@ -125,7 +128,7 @@ amqpJs.users.sendNewMessages = function sendNewMessages() {
                             }));
                             delete amqpJs.users.user[key].clients[i].response;
                             delete amqpJs.users.user[key].clients[i];
-                            //////console.log("tm=" + ++tm);
+                            //////amqpJs.toConsole("tm=" + ++tm);
                         }
 
                     }
@@ -173,7 +176,7 @@ http.createServer(function (request, response) {
 
                     client.last_message = (typeof POST['lmid'] != "undefined") ? parseInt(POST['lmid'], 10) : -1;
                     client.response = response;
-                    ////////console.log(id + ' waits for some messages');
+                    ////////amqpJs.toConsole(id + ' waits for some messages');
 
                     amqpJs.clients.push(client);
                     amqpJs.users.handleUserClient(id, client);
@@ -194,8 +197,8 @@ amqpJs.clearBadClients = function clearBadClients() {
     //clear bad clients
     var a = amqpJs.clients.length;
     amqpJs.clients = amqpJs.clients.filter(amqpJs.connectFilter);
-    ////////console.log("users count----------: " + a);
-    //////console.log("users count: " + amqpJs.clients.length + "/" + a);
+    ////////amqpJs.toConsole("users count----------: " + a);
+    //////amqpJs.toConsole("users count: " + amqpJs.clients.length + "/" + a);
     setTimeout(amqpJs.clearBadClients, 1000);
 };
 amqpJs.clearBadClients();
@@ -210,7 +213,7 @@ amqpJs.processBufferQueue = function processBufferQueue() {
     for(var i = 0; i < len; i++) { //todo move to shift
         amqpJs.processQueueMessage(amqpJs._bufferQueue.shift());
     }
-    ////////console.log('processBufferQueue:' + amqpJs._bufferQueue.length + ', start:' + len);
+    ////////amqpJs.toConsole('processBufferQueue:' + amqpJs._bufferQueue.length + ', start:' + len);
     amqpJs.users.sendNewMessages(); //todo add if
     setTimeout(amqpJs.processBufferQueue,200);
 };
@@ -235,7 +238,7 @@ amqpJs.processQueueMessage = function processQueueMessage(json) {
     if (typeof json.to == "string") { //key
         amqpJs.users.addMessage(json.to, json);
         sended++;
-        ////////console.log("sended:" + sended);
+        ////////amqpJs.toConsole("sended:" + sended);
         return true;
     }
     return false;
@@ -255,15 +258,16 @@ amqpJs.initConnection = function () {
     }();
 
     amqpJs.connection.addListener('error', function (e) {
+        amqpJs.toConsole('amqpJs.connection error');
         throw e;
     });
     amqpJs.connection.addListener('close', function (e) {
         amqpJs.initConnection();
     });
     amqpJs.connection.addListener('ready', function () {
-        //////console.log("connected to " + connection.serverProperties.product);
+        //////amqpJs.toConsole("connected to " + connection.serverProperties.product);
         var q = amqpJs.connection.queue('messages', {passive: false, autoDelete: true}, function (queue) {
-            //////console.log("Queue " + queue.name + " is open");
+            //////amqpJs.toConsole("Queue " + queue.name + " is open");
             q.subscribe({ack: false, prefetchCount: 1000 }, function (json, headers, deliveryInfo, message) {
                 amqpJs.statistic.counters.subscribeReceived++;
 
@@ -279,7 +283,7 @@ amqpJs.initConnection();
  process.addListener('exit', function () {
  assert.equal(3, recvCount);
  });
- //////console.log('Server running at http://127.0.0.1:' + port + '/');
+ //////amqpJs.toConsole('Server running at http://127.0.0.1:' + port + '/');
  */
 
 
