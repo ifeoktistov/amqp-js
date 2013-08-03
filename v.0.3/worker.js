@@ -86,15 +86,30 @@ amqpJs.statistic.sendStatistic = function () {
 
 
 ////////////////////////// lib
-amqpJs.data.users.handleUserClient = function handleUserClient(key, client) {
+amqpJs.data.users.handleUserClient = function handleUserClient(id, client) {
     //////amqpJs.toConsole("handle:" + key);
-    if (typeof amqpJs.data.users.user[key] != "object") {
-        amqpJs.data.users.user[key] = {};
+    if (typeof amqpJs.data.users.user[id] != "object") {
+        amqpJs.data.users.user[id] = {};
     }
-    if (typeof amqpJs.data.users.user[key].clients != "object") {
-        amqpJs.data.users.user[key].clients = [];
+    if (typeof amqpJs.data.users.user[id].clients != "object") {
+        amqpJs.data.users.user[id].clients = [];
     }
-    amqpJs.data.users.user[key].clients.push(client);
+    amqpJs.data.users.user[id].clients.push(client);
+
+    // timeout polling connections
+    setTimeout((function(client){
+        return function() {
+            if (typeof client.response == "undefined" || typeof client.response.writeHead == "undefined") {
+                return false;
+            }
+            client.response.writeHead(200, {'Content-Type': 'application/json'});
+            client.response.end(JSON.stringify({
+                'timeout': true
+            }));
+
+            delete client.response;//delete garbage
+        }
+    })(client), amqpJs.options.longPolling.timeout);
 };
 
 amqpJs.data.users.addMessage = function addMessage(key, message) {
@@ -179,18 +194,6 @@ http.createServer(function (request, response) {
 
                     amqpJs.data.clients.push(client);
                     amqpJs.data.users.handleUserClient(id, client);
-
-                    // timeout polling connections
-                    setTimeout((function(client){
-                        return function() {
-                            client.response.writeHead(200, {'Content-Type': 'application/json'});
-                            client.response.end(JSON.stringify({
-                                'timeout': true
-                            }));
-                            //delete garbage
-                            delete client.response;
-                        }
-                    })(client), amqpJs.options.longPolling.timeout);
                 });
             }
             break;
