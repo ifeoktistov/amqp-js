@@ -269,7 +269,8 @@ amqpJs.initConnection = function () {
 
     amqpJs.connection.addListener('error', function (e) {
         amqpJs.toConsole('amqpJs.connection error');
-        throw e;
+        amqpJs.initConnection();
+        //throw e;
     });
     amqpJs.connection.addListener('close', function (e) {
         amqpJs.initConnection();

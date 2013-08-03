@@ -58,9 +58,8 @@ Object.keys(amqpJsServer.cluster.workers).forEach(function(id) {
 //up management server
 http.createServer(function (request, response) {
     var urlparts = url.parse(request.url, true);
-    console.log(urlparts.pathname);
     switch (urlparts.pathname) {
-        case '/status':
+        case '/manage':
             /*if(request.method == 'POST') {
                 var POST = '';
                 request.on('data', function (data) {
@@ -100,7 +99,7 @@ http.createServer(function (request, response) {
             amqpJsServer.get_files(urlparts.pathname, response);
             break;
     }
-}).listen(amqpJsServer.options.managementPort);
+}).listen(amqpJsServer.options.managePort);
 
 
 
