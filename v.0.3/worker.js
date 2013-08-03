@@ -1,4 +1,17 @@
-var port = 88;
+"use strict";
+var amqpJs = amqpJs || {};
+amqpJs.worker = {};
+amqpJs.worker.id = false;
+amqpJs.toConsole = function (msg) {
+    if (process.send) {
+        process.send(msg);
+    }
+    else {
+        console.log(msg);
+    }
+}
+
+/* load modules */
 var http = require('http');
 var url = require('url');
 var fs = require('fs');
@@ -8,31 +21,21 @@ var amqp = require('./libs/amqp/amqp');
 
 /* process message from server */
 process.on('message', function(m) {
-    process.send('CHILD got message:' + m); //redirect message
-});
-
-/*
-
-load config
-
- var apacheconf = require('apacheconf');
- apacheconf('/etc/apache2/sites-enabled/******', function(err, config, parser) {
-     if (err) throw err
-
-     amqpJs.toConsole(objToString(config,5));
- })
- */
-
-
-var amqpJs = amqpJs || {};
-amqpJs.toConsole = function (msg) {
-    if (process.send) {
-        process.send(msg);
+    if (typeof m['setId'] != "undefined") {
+        amqpJs.worker.id = m['setId'];
+        amqpJs.toConsole('Set worker ID: ' + amqpJs.worker.id); //redirect message
+    }
+    else if (typeof m['action'] != "undefined"){
+        if ( m['action'] == 'getStatistic') {
+            amqpJs.statistic.sendStatistic();
+        }
     }
     else {
-        console.log(msg);
+        amqpJs.toConsole('CHILD got message:' + m); //redirect message
     }
-}
+});
+
+
 amqpJs.options = (function (){
     var configPath = __dirname + "/config.js";
     if(!fs.existsSync(configPath)) {
@@ -41,11 +44,15 @@ amqpJs.options = (function (){
     }
     return require(configPath);
 })();
-amqpJs.clients = [];
-amqpJs.users = {};
-amqpJs.users.edited_users = {};
-amqpJs.users.user = {}; // all users object
-amqpJs._bufferQueue = [];
+
+/* data */
+amqpJs.data = {};
+amqpJs.data.clients = [];
+amqpJs.data.users = {};
+amqpJs.data.users.edited_users = {};
+amqpJs.data.users.user = {}; // all users object
+amqpJs.data._bufferQueue = [];
+
 /* statistic */
 amqpJs.statistic = {};
 amqpJs.statistic.counters = {
@@ -53,69 +60,77 @@ amqpJs.statistic.counters = {
     'subscribeReceived' : 0,
     'fetchRequest' : 0
 };
-amqpJs.statistic.app = {
-    'start' : '' //process.uptime()
-};//new Date, Date.now(), process.hrtime(),
-amqpJs.statistic.counters = {};
-amqpJs.statistic.getStatistic = function () {};
-amqpJs.statistic.sendStatistic = function () {};
-
-
-
-////////amqpJs.toConsole(process.memoryUsage());
-//amqpJs.toConsole(__dirname);
-
+amqpJs.statistic.app = function (){
+    return {
+        'memory_bytes': process.memoryUsage()
+    }
+};
+amqpJs.statistic.getStatistic = function () {
+    return {
+        time : Date.now(),
+        counters: amqpJs.statistic.counters,
+        app: amqpJs.statistic.app(),
+        uptime: process.uptime()
+    };
+};
+amqpJs.statistic.sendStatistic = function () {
+    amqpJs.toConsole({
+        data: {
+            workerID: amqpJs.worker.id,
+            type: 'statistic',
+            stat: amqpJs.statistic.getStatistic()
+        }
+    });
+};
 
 
 
 ////////////////////////// lib
-amqpJs.users.handleUserClient = function handleUserClient(key, client) {
+amqpJs.data.users.handleUserClient = function handleUserClient(key, client) {
     //////amqpJs.toConsole("handle:" + key);
-    if (typeof amqpJs.users.user[key] != "object") {
-        amqpJs.users.user[key] = {};
+    if (typeof amqpJs.data.users.user[key] != "object") {
+        amqpJs.data.users.user[key] = {};
     }
-    if (typeof amqpJs.users.user[key].clients != "object") {
-        amqpJs.users.user[key].clients = [];
+    if (typeof amqpJs.data.users.user[key].clients != "object") {
+        amqpJs.data.users.user[key].clients = [];
     }
-    amqpJs.users.user[key].clients.push(client);
+    amqpJs.data.users.user[key].clients.push(client);
 };
 
-amqpJs.users.addMessage = function addMessage(key, message) {
-    amqpJs.users.edited_users[key] = 1;
-    if (typeof amqpJs.users.user[key] != "object") {
-        amqpJs.users.user[key] = {};
+amqpJs.data.users.addMessage = function addMessage(key, message) {
+    amqpJs.data.users.edited_users[key] = 1;
+    if (typeof amqpJs.data.users.user[key] != "object") {
+        amqpJs.data.users.user[key] = {};
     }
-    if (typeof amqpJs.users.user[key].messages != "object") {
-        amqpJs.users.user[key].messages = {};
+    if (typeof amqpJs.data.users.user[key].messages != "object") {
+        amqpJs.data.users.user[key].messages = {};
     }
-    amqpJs.users.user[key].messages[message.id] = message;
+    amqpJs.data.users.user[key].messages[message.id] = message;
 
     setTimeout((function (key, mid) {
         return function () {
-            delete amqpJs.users.user[key].messages[mid];
+            delete amqpJs.data.users.user[key].messages[mid];
         }
     })(key, message.id), 2000);
 
-
-    ////////amqpJs.toConsole("add message:" + key + "messages length:" + Object.keys(amqpJs.users.user[key].messages).length);
 };
 
-amqpJs.users.sendNewMessages = function sendNewMessages() {
-    ////////amqpJs.toConsole(amqpJs.users.edited_users);
+amqpJs.data.users.sendNewMessages = function sendNewMessages() {
+    ////////amqpJs.toConsole(amqpJs.data.users.edited_users);
     var send_messages = [];
-    for (var key in amqpJs.users.edited_users) {
-        if (amqpJs.users.edited_users.hasOwnProperty(key)) {
+    for (var key in amqpJs.data.users.edited_users) {
+        if (amqpJs.data.users.edited_users.hasOwnProperty(key)) {
             //key = id user with new messages
-            if (typeof amqpJs.users.user[key].clients == "object") {
-                for (var i in amqpJs.users.user[key].clients) {
-                    if (typeof amqpJs.users.user[key].clients[i].response != "undefined") {
+            if (typeof amqpJs.data.users.user[key].clients == "object") {
+                for (var i in amqpJs.data.users.user[key].clients) {
+                    if (typeof amqpJs.data.users.user[key].clients[i].response != "undefined") {
                         var last_send_message_id = 0;
-                        var last_client_message_id = amqpJs.users.user[key].clients[i].last_message;
+                        var last_client_message_id = amqpJs.data.users.user[key].clients[i].last_message;
 
                         send_messages = [];
-                        for (var id_mes in amqpJs.users.user[key].messages) {
+                        for (var id_mes in amqpJs.data.users.user[key].messages) {
                             if (id_mes > last_client_message_id) {
-                                send_messages.push(amqpJs.users.user[key].messages[id_mes]);
+                                send_messages.push(amqpJs.data.users.user[key].messages[id_mes]);
                                 //if (id_mes > last_send_message_id) {
                                 last_send_message_id = id_mes;
                                 //}
@@ -123,56 +138,38 @@ amqpJs.users.sendNewMessages = function sendNewMessages() {
                         }
 
                         if (send_messages != []) {
-                            amqpJs.users.user[key].clients[i].response.writeHead(200, {'Content-Type': 'application/json'});
-                            amqpJs.users.user[key].clients[i].response.end(JSON.stringify({
+                            amqpJs.data.users.user[key].clients[i].response.writeHead(200, {'Content-Type': 'application/json'});
+                            amqpJs.data.users.user[key].clients[i].response.end(JSON.stringify({
                                 'data': send_messages,
                                 'last_message': last_send_message_id
                             }));
-                            delete amqpJs.users.user[key].clients[i].response;
-                            delete amqpJs.users.user[key].clients[i];
+                            delete amqpJs.data.users.user[key].clients[i].response;
+                            delete amqpJs.data.users.user[key].clients[i];
                             //////amqpJs.toConsole("tm=" + ++tm);
                         }
-
                     }
                 }
             }
         }
     }
-    amqpJs.users.edited_users = {};
+    amqpJs.data.users.edited_users = {};
 };
 
-amqpJs.get_files = function (pathname, response) {
-    fs.readFile('./client' + pathname, function (err, data) {
-        if (!err) {
-            if (pathname.indexOf('.js') != -1) {
-                response.writeHead(200, {'Content-Type': 'text/javascript'});
-            } else if (pathname.indexOf('.html') != -1) {
-                response.writeHead(200, {'Content-Type': 'text/html'});
-            } else if (pathname.indexOf('.css') != -1) {
-                response.writeHead(200, {'Content-Type': 'text/css'});
-            }
-            response.end(data);
-        } else {
-            response.writeHead(404, {'Content-Type': 'text/html'});
-            response.end('404 NOT FOUND');
-        }
-    });
-};
 
 http.createServer(function (request, response) {
     var urlparts = url.parse(request.url, true);
     switch (urlparts.pathname) {
         case '/fetch':
             if(request.method=='POST') {
-                var body = '';
+                var POST = '';
                 request.on('data', function (data) {
-                    body += data;
+                    POST += data;
                 });
                 request.on('end', function(){
                     amqpJs.statistic.counters.fetchRequest++;
                     response.setHeader("Access-Control-Allow-Origin", "*"); //todo check security
 
-                    var POST = qs.parse(body);
+                    POST = qs.parse(POST);
                     var id = POST['uid'];
                     var client = new Object();
 
@@ -180,43 +177,56 @@ http.createServer(function (request, response) {
                     client.response = response;
                     ////////amqpJs.toConsole(id + ' waits for some messages');
 
-                    amqpJs.clients.push(client);
-                    amqpJs.users.handleUserClient(id, client);
+                    amqpJs.data.clients.push(client);
+                    amqpJs.data.users.handleUserClient(id, client);
+
+                    // timeout polling connections
+                    setTimeout((function(client){
+                        return function() {
+                            client.response.writeHead(200, {'Content-Type': 'application/json'});
+                            client.response.end(JSON.stringify({
+                                'timeout': true
+                            }));
+                            //delete garbage
+                            delete client.response;
+                        }
+                    })(client), amqpJs.options.longPolling.timeout);
                 });
             }
             break;
         default:
-            amqpJs.get_files(urlparts.pathname, response);
+            response.writeHead(404, {'Content-Type': 'text/html'});
+            response.end('404 NOT FOUND');
             break;
     }
-}).listen(port);
+}).listen(amqpJs.options.fetchPort);
 
 
-amqpJs.connectFilter = function cacheFilter(element, index, array) {
-    return !(typeof element == "undefined" || typeof element.response == "undefined");
-};
 amqpJs.clearBadClients = function clearBadClients() {
     //clear bad clients
-    var a = amqpJs.clients.length;
-    amqpJs.clients = amqpJs.clients.filter(amqpJs.connectFilter);
+    var a = amqpJs.data.clients.length;
+    amqpJs.data.clients = amqpJs.data.clients.filter(
+            function (element, index, array) {
+            return !(typeof element == "undefined" || typeof element.response == "undefined");
+        }
+    );
     ////////amqpJs.toConsole("users count----------: " + a);
-    //////amqpJs.toConsole("users count: " + amqpJs.clients.length + "/" + a);
+    //////amqpJs.toConsole("users count: " + amqpJs.data.clients.length + "/" + a);
     setTimeout(amqpJs.clearBadClients, 1000);
 };
-amqpJs.clearBadClients();
 
 
 amqpJs.addBufferQueue = function addBufferQueue(json) {
-    amqpJs._bufferQueue.push(json);
+    amqpJs.data._bufferQueue.push(json);
 };
 amqpJs.processBufferQueue = function processBufferQueue() {
-    var len = amqpJs._bufferQueue.length;
+    var len = amqpJs.data._bufferQueue.length;
 
     for(var i = 0; i < len; i++) { //todo move to shift
-        amqpJs.processQueueMessage(amqpJs._bufferQueue.shift());
+        amqpJs.processQueueMessage(amqpJs.data._bufferQueue.shift());
     }
-    ////////amqpJs.toConsole('processBufferQueue:' + amqpJs._bufferQueue.length + ', start:' + len);
-    amqpJs.users.sendNewMessages(); //todo add if
+    ////////amqpJs.toConsole('processBufferQueue:' + amqpJs.data._bufferQueue.length + ', start:' + len);
+    amqpJs.data.users.sendNewMessages(); //todo add if
     setTimeout(amqpJs.processBufferQueue,200);
 };
 
@@ -238,15 +248,13 @@ amqpJs.processQueueMessage = function processQueueMessage(json) {
         return true;
     }
     if (typeof json.to == "string") { //key
-        amqpJs.users.addMessage(json.to, json);
+        amqpJs.data.users.addMessage(json.to, json);
         //sended++;
         ////////amqpJs.toConsole("sended:" + sended);
         return true;
     }
     return false;
 };
-
-amqpJs.processBufferQueue();
 
 amqpJs.initConnection = function () {
     amqpJs.statistic.counters.initConnections++;
@@ -280,14 +288,18 @@ amqpJs.initConnection = function () {
 };
 
 amqpJs.initConnection();
+amqpJs.clearBadClients();
+amqpJs.processBufferQueue();
 
-/*
- process.addListener('exit', function () {
- assert.equal(3, recvCount);
- });
- //////amqpJs.toConsole('Server running at http://127.0.0.1:' + port + '/');
- */
 
+
+
+
+
+
+
+
+//----------        helpers          --------------
 
 function clone(obj) {
     if (obj == null || typeof(obj) != 'object')
