@@ -16,11 +16,11 @@ amqpJsServer.options = (function (){
     var configPath = __dirname + '/' + amqpJsServer.workers.sourcePath + "/config.js";
     if(typeof fs.existsSync == "undefined") {
         console.log("Error: Please install fs lib.");
-        process.end();
+        process.exit();
     }
     if(!fs.existsSync(configPath)) {
         console.log("Error: Config doesn't exist; Please copy config.example.js -> config.js.");
-        process.end();
+        process.exit();
     }
     return require(configPath);
 })();
