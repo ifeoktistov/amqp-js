@@ -14,6 +14,10 @@ amqpJsServer.workers.statistic = {};
 amqpJsServer.workers.sourcePath = 'v.0.3';
 amqpJsServer.options = (function (){
     var configPath = __dirname + '/' + amqpJsServer.workers.sourcePath + "/config.js";
+    if(typeof fs == "undefined") {
+        amqpJs.toConsole("Error: Please install fs lib.");
+        process.end();
+    }
     if(!fs.existsSync(configPath)) {
         amqpJs.toConsole("Error: Config doesn't exist; Please copy config.example.js -> config.js.");
         process.end();
