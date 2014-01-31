@@ -11,11 +11,11 @@ amqpJsServer.cluster = require("cluster");
 /* configure */
 amqpJsServer.workers = {};
 amqpJsServer.workers.statistic = {};
-amqpJsServer.workers.sourcePath = 'v.0.3';
+amqpJsServer.workers.sourcePath = 'v.0.3.1';
 amqpJsServer.options = (function (){
     var configPath = __dirname + '/' + amqpJsServer.workers.sourcePath + "/config.js";
     if(typeof fs.existsSync == "undefined") {
-        console.log("Error: Please install fs lib.");
+        console.log("Error: Object #<Object> has no method 'existsSync'. go to google.com =).");
         process.exit();
     }
     if(!fs.existsSync(configPath)) {
@@ -51,7 +51,6 @@ amqpJsServer.cluster.fork();   //current version limited only one fork =)
 Object.keys(amqpJsServer.cluster.workers).forEach(function(id) {
     amqpJsServer.cluster.workers[id].on('message', amqpJsServer.workers.messageHandler);
 });
-
 Object.keys(amqpJsServer.cluster.workers).forEach(function(id) {
     amqpJsServer.cluster.workers[id].send({
         setId: id
