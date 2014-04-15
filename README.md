@@ -1,30 +1,6 @@
 # amqp-js
 
-  Des
-
-## Installation
-
-    $ [text instal ]
-
-## Features
-
-[list]
-
-## Overview
-
-  - [Name](#name)
-
-
-## Subj
-
- lorem ipsum, `tag`
-
-```js
-code
-```
-
-  some text
-
+ 
 ## License
 
 (The MIT License)
