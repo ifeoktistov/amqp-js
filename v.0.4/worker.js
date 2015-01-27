@@ -47,6 +47,7 @@ amqpJs.options = (function (){
 
 /* data */
 amqpJs.data = {};
+amqpJs.data.systemMessageId = 0;
 amqpJs.data.clients = [];
 amqpJs.data.users = {};
 amqpJs.data.users.edited_users = {};
@@ -120,14 +121,16 @@ amqpJs.data.users.addMessage = function addMessage(key, message) {
     if (typeof amqpJs.data.users.user[key].messages != "object") {
         amqpJs.data.users.user[key].messages = {};
     }
-    amqpJs.data.users.user[key].messages[message.id] = message;
+
+    amqpJs.data.users.user[key].messages[amqpJs.data.systemMessageId] = message;
 
     setTimeout((function (key, mid) {
         return function () {
             delete amqpJs.data.users.user[key].messages[mid];
         }
-    })(key, message.id), 2000);
+    })(key, amqpJs.data.systemMessageId), 2000);
 
+    amqpJs.data.systemMessageId++;
 };
 
 amqpJs.data.users.sendNewMessages = function sendNewMessages() {
@@ -196,7 +199,12 @@ http.createServer(function (request, response) {
                         var id = POST['uuid'];
                         var client = new Object();
 
-                        client.last_message = (typeof POST['lmid'] != "undefined") ? parseInt(POST['lmid'], 10) : -1;
+                        var lmid = (typeof POST['lmid'] != "undefined") ? parseInt(POST['lmid'], 10) : -1;
+                        if (lmid > amqpJs.data.systemMessageId) {
+                            lmid = 0;
+                        }
+
+                        client.last_message = lmid;
                         client.response = response;
 
                         amqpJs.data.clients.push(client);

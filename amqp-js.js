@@ -11,7 +11,7 @@ amqpJsServer.cluster = require("cluster");
 /* configure */
 amqpJsServer.workers = {};
 amqpJsServer.workers.statistic = {};
-amqpJsServer.workers.sourcePath = 'v.0.3.2';
+amqpJsServer.workers.sourcePath = 'v.0.4';
 amqpJsServer.options = (function (){
     var configPath = __dirname + '/' + amqpJsServer.workers.sourcePath + "/config.js";
     if(typeof fs.existsSync == "undefined") {
