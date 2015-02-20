@@ -244,7 +244,6 @@ amqpJs.processBufferQueue = function processBufferQueue() {
     setTimeout(amqpJs.processBufferQueue,200);
 };
 
-
 amqpJs.processQueueMessage = function processQueueMessage(json) {
     if (typeof json == "string") { //id
         json = JSON.parse(json);
@@ -298,52 +297,8 @@ amqpJs.initQueueConnection = function () {
     });
 };
 
-amqpJs.run = function(){
-    amqpJs.startServer();
-    amqpJs.initQueueConnection();
-    amqpJs.clearBadClients();
-    amqpJs.processBufferQueue();
 
-    return false;
-
-    function isPortTaken(port, fn) {
-        var net = require('net');
-        var tester = net.createServer()
-            .once('error', function (err) {
-                if (err.code != 'EADDRINUSE') {
-                    return fn(err)
-                }
-                fn(null, true)
-            })
-            .once('listening', function() {
-                tester
-                    .once(
-                        'close',
-                        function() {
-                            fn(null, false)
-                        }
-                    )
-                    .close()
-            })
-            .listen(port)
-    }
-
-    console.log("ss");
-    isPortTaken(amqpJs.options.port, function(data, isTaken){
-        console.log("Error: as.qw");
-        if (isTaken) {
-            console.log("Error: as.qw");
-            console.log("Error: " + amqpJs.options.port + " port is occupied. Exit.");
-            console.log("Error: as.qw");
-            process.exit(1);
-        }
-        else {
-            amqpJs.startServer();
-            amqpJs.initQueueConnection();
-            amqpJs.clearBadClients();
-            amqpJs.processBufferQueue();
-        }
-    });
-};
-
-amqpJs.run();
+amqpJs.startServer();
+amqpJs.initQueueConnection();
+amqpJs.clearBadClients();
+amqpJs.processBufferQueue();
