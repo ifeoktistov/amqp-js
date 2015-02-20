@@ -1,6 +1,9 @@
 module.exports = {
-    managePort : 4440,
-    fetchPort : 88,
+    port : 88,
+    manage: {
+        userName: '',
+        password: ''
+    },
     amqp : {
         host: "127.0.0.1",
         login: 'guest',
@@ -10,4 +13,4 @@ module.exports = {
     'longPolling' : {
         timeout : 60000 //ms
     }
-}
+};
