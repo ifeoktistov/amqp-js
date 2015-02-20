@@ -1,3 +1,5 @@
+config.js
+
 lib-cov
 *.seed
 *.log
@@ -10,5 +12,4 @@ lib-cov
 pids
 logs
 results
-
 npm-debug.log
