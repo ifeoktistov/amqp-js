@@ -213,6 +213,8 @@ amqpJs.startServer = function startServer() {
             console.log("amqpJs.startServer Error. Code = " + err.code);
             if (err.code == 'EADDRINUSE') {
                 console.log(amqpJs.options.port + " port is occupied.");
+            } else if (err.code == 'EACCES') {
+                console.log("No access to port " + amqpJs.options.port + ".");
             }
             console.log("Exit.");
             process.exit(1);
